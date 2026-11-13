@@ -87,26 +87,22 @@ body {
   border-radius: 6px;
 }
 
-/* La llave del hero: los dientes se "cortan" una sola vez al cargar. */
-@keyframes cut {
-  from { transform: scaleY(0); }
+/* La llave del hero: entra, la cortadora talla los dientes (SVG) y el llavero se balancea. */
+@keyframes key-in {
+  from { opacity: 0; transform: translateY(14px); }
 }
-.key-cut {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: cut 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i) * 130ms + 350ms);
-}
+.hero-key-body { animation: key-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes swing {
-  0% { rotate: 22deg; }
-  45% { rotate: -10deg; }
-  75% { rotate: 4deg; }
+  0% { rotate: 0deg; }
+  20% { rotate: 14deg; }
+  50% { rotate: -7deg; }
+  78% { rotate: 3deg; }
   100% { rotate: 0deg; }
 }
 .key-tag {
   transform-box: fill-box;
   transform-origin: 50% 0;
-  animation: swing 1.6s cubic-bezier(0.3, 0.7, 0.4, 1) 1.2s both;
+  animation: swing 1.5s cubic-bezier(0.3, 0.7, 0.4, 1) 2.3s both;
 }
 @keyframes pop {
   from { opacity: 0; transform: scale(0.96); }
@@ -123,7 +119,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .key-cut, .key-tag, .pop, .quote-dialog[open] { animation: none; }
+  .hero-key-body, .key-tag, .pop, .quote-dialog[open] { animation: none; }
+  .key-stock, .key-cutter, .key-glint { display: none; }
 }
 
 .field {

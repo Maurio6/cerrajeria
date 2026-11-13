@@ -35,42 +35,127 @@ const faq = [
   ["¿Cómo puedo pagar?", "En efectivo, Nequi, Daviplata o transferencia, cuando termine el trabajo."],
 ];
 
-// La llave del hero: los dientes se cortan al cargar y del llavero cuelga el precio real.
+// La llave del hero: una cortadora recorre la hoja y talla los dientes, luego un brillo la recorre
+// y el llavero (con el precio real) se balancea. Una sola secuencia al cargar.
+const PROFILE = "M290 110 L311 124 L332 110 L353 140 L374 110 L395 130 L416 110 L437 146 L458 110 L479 122 L500 110 L521 136 L542 110 L563 132 L584 110";
+const BOW =
+  "M110 60 H160 A70 70 0 0 1 230 130 V170 A70 70 0 0 1 160 240 H110 A70 70 0 0 1 40 170 V130 A70 70 0 0 1 110 60 Z M117 150 A22 22 0 1 0 73 150 A22 22 0 1 0 117 150 Z";
+const BLADE = `M226 120 H262 V108 H276 V110 H290 ${PROFILE.slice(9)} H592 L622 140 V168 L604 180 H276 V192 H262 V180 H226 Z`;
+const CUT_BEGIN = "0.5s";
+const CUT_DUR = "1.8s";
+const TEETH = Array.from({ length: 20 }, (_, i) => {
+  const p = (deg: number, r: number) => {
+    const a = (deg * Math.PI) / 180;
+    return `${(Math.cos(a) * r).toFixed(1)} ${(Math.sin(a) * r - 34).toFixed(1)}`;
+  };
+  const a = i * 18;
+  return `M${p(a - 6, 33)} L${p(a, 40)} L${p(a + 6, 33)} Z`;
+}).join(" ");
+
 function HeroKey({ price }: { price: string }) {
-  const cuts = [
-    [262, 20], [304, 32], [346, 14], [388, 28], [430, 22], [472, 36], [514, 16],
-  ];
   return (
-    <svg viewBox="-50 10 700 410" className="h-auto w-full" role="img" aria-label={`Llave de latón. Copias desde ${price}`}>
-      {/* llave */}
-      <g>
-        <circle cx="150" cy="150" r="96" fill="var(--brass)" />
-        <circle cx="150" cy="150" r="72" fill="none" stroke="var(--brass-dark)" strokeWidth="3" opacity=".55" />
-        <circle cx="104" cy="150" r="20" fill="var(--surface)" />
-        <rect x="236" y="116" width="26" height="68" rx="4" fill="var(--brass)" />
-        <path d="M250 128 H580 L612 150 L580 172 H250 Z" fill="var(--brass)" />
-        <path d="M272 145 H566" stroke="var(--brass-dark)" strokeWidth="5" strokeLinecap="round" opacity=".7" />
-        {cuts.map(([x, d], i) => (
-          <path
-            key={x}
-            className="key-cut"
-            style={{ "--i": i } as React.CSSProperties}
-            d={`M${x - 21} 173 L${x} ${172 - d} L${x + 21} 173 Z`}
-            fill="var(--surface)"
-          />
+    <svg viewBox="-40 30 680 390" className="h-auto w-full" role="img" aria-label={`Llave de latón recién cortada. Copias desde ${price}`}>
+      <defs>
+        <path id="k-bow" d={BOW} fillRule="evenodd" />
+        <path id="k-blade" d={BLADE} />
+        <linearGradient id="k-sheen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity=".45" />
+          <stop offset=".45" stopColor="#fff" stopOpacity="0" />
+          <stop offset="1" stopColor="#000" stopOpacity=".22" />
+        </linearGradient>
+        {/* mismo brillo para la hoja y el material sin cortar, así no se nota la diferencia */}
+        <linearGradient id="k-sheen-blade" gradientUnits="userSpaceOnUse" x1="0" y1="108" x2="0" y2="192">
+          <stop offset="0" stopColor="#fff" stopOpacity=".45" />
+          <stop offset=".45" stopColor="#fff" stopOpacity="0" />
+          <stop offset="1" stopColor="#000" stopOpacity=".22" />
+        </linearGradient>
+        <linearGradient id="k-glint" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset=".5" stopColor="#fff" stopOpacity=".7" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <clipPath id="k-shape">
+          <use href="#k-bow" />
+          <use href="#k-blade" />
+        </clipPath>
+        {/* lo que falta por cortar: todo lo que está a la derecha de la cortadora */}
+        <clipPath id="k-stock-clip">
+          <rect x="290" y="0" width="400" height="300">
+            <animate attributeName="x" from="290" to="584" begin={CUT_BEGIN} dur={CUT_DUR} fill="freeze" />
+          </rect>
+        </clipPath>
+        <filter id="k-shadow" x="-10%" y="-20%" width="120%" height="160%">
+          <feDropShadow dx="0" dy="10" stdDeviation="9" floodColor="#000" floodOpacity=".2" />
+        </filter>
+      </defs>
+
+      {/* argolla: pasa por detrás de la cabeza y se ve por el hueco */}
+      <circle cx="70" cy="200" r="56" fill="none" stroke="var(--muted)" strokeWidth="6" />
+      <circle cx="70" cy="200" r="56" fill="none" stroke="#fff" strokeOpacity=".25" strokeWidth="1.5" />
+
+      <g className="hero-key-body" filter="url(#k-shadow)">
+        <use href="#k-bow" fill="var(--brass)" stroke="var(--brass-dark)" strokeWidth="1.5" />
+        <use href="#k-blade" fill="var(--brass)" stroke="var(--brass-dark)" strokeWidth="1.5" />
+        <use href="#k-bow" fill="url(#k-sheen)" />
+        <use href="#k-blade" fill="url(#k-sheen-blade)" />
+        {/* relieve en la cabeza: marco y la marca del negocio */}
+        <rect x="56" y="76" width="158" height="148" rx="56" fill="none" stroke="#fff" strokeOpacity=".28" strokeWidth="2" />
+        <g fill="var(--brass-dark)" opacity=".55">
+          <circle cx="172" cy="143" r="11" />
+          <path d="M166 150 L162 172 H182 L178 150 Z" />
+        </g>
+        {/* canal fresado de la hoja */}
+        <path d="M300 154 H594 V161 H300 Z" fill="#000" opacity=".16" />
+        <path d="M300 165 H590" stroke="#fff" strokeOpacity=".3" strokeWidth="1.5" />
+        {/* material sin cortar: desaparece detrás de la cortadora */}
+        <g className="key-stock" clipPath="url(#k-stock-clip)">
+          <path d={`${PROFILE} Z`} fill="var(--brass)" />
+          <path d={`${PROFILE} Z`} fill="url(#k-sheen-blade)" />
+          <path d="M290 110 H584" stroke="var(--brass-dark)" strokeWidth="1.5" />
+        </g>
+      </g>
+
+
+      {/* cortadora */}
+      <g className="key-cutter" opacity="0">
+        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.85;1" begin={CUT_BEGIN} dur="2.2s" fill="freeze" />
+        <animateMotion path={PROFILE} begin={CUT_BEGIN} dur={CUT_DUR} calcMode="linear" fill="freeze" />
+        <rect x="-5" y="-130" width="10" height="96" rx="3" fill="var(--muted)" opacity=".45" />
+        <g>
+          <animateTransform attributeName="transform" type="rotate" from="0 0 -34" to="-1440 0 -34" begin={CUT_BEGIN} dur={CUT_DUR} fill="freeze" />
+          <circle cx="0" cy="-34" r="34" fill="var(--muted)" />
+          <path d={TEETH} fill="var(--muted)" />
+          <circle cx="0" cy="-34" r="22" fill="none" stroke="#fff" strokeOpacity=".25" strokeWidth="1.5" />
+          <path d="M0 -56 V-12 M-22 -34 H22" stroke="#fff" strokeOpacity=".2" strokeWidth="2" />
+          <circle cx="0" cy="-34" r="7" fill="var(--surface)" />
+        </g>
+        {/* virutas */}
+        {[0, 0.17, 0.33].map((d, i) => (
+          <circle key={d} cx={i * 4 - 4} cy="2" r="2.2" fill="var(--brass)">
+            <animate attributeName="cy" values="2;30" dur="0.5s" begin={`${0.5 + d}s`} repeatCount="4" />
+            <animate attributeName="cx" values={`${i * 4 - 4};${i * 9 - 9}`} dur="0.5s" begin={`${0.5 + d}s`} repeatCount="4" />
+            <animate attributeName="opacity" values="1;0" dur="0.5s" begin={`${0.5 + d}s`} repeatCount="4" fill="freeze" />
+          </circle>
         ))}
       </g>
-      {/* argolla (pasa por el hueco de la llave) y llavero */}
-      <circle cx="80" cy="190" r="47" fill="none" stroke="var(--muted)" strokeWidth="5" />
-      <g transform="translate(80 237)">
+
+      {/* brillo que recorre la llave terminada */}
+      <g clipPath="url(#k-shape)" className="key-glint">
+        <rect x="-160" y="20" width="120" height="280" fill="url(#k-glint)" transform="skewX(-20)">
+          <animate attributeName="x" from="-160" to="760" begin="2.4s" dur="0.9s" fill="freeze" />
+        </rect>
+      </g>
+
+      {/* llavero con el precio */}
+      <g transform="translate(70 256)">
         <g className="key-tag">
-          <path d="M0 0 V16" stroke="var(--muted)" strokeWidth="3" />
-          <rect x="-78" y="16" width="156" height="136" rx="14" fill="var(--sunk)" stroke="var(--line)" strokeWidth="2" />
-          <circle cx="0" cy="36" r="7" fill="var(--surface)" stroke="var(--line)" strokeWidth="2" />
-          <text x="0" y="78" textAnchor="middle" fill="var(--ink)" fontSize="17" style={{ fontFamily: "var(--font-schibsted)" }}>
+          <path d="M0 0 V14" stroke="var(--muted)" strokeWidth="3" />
+          <rect x="-78" y="14" width="156" height="132" rx="14" fill="var(--sunk)" stroke="var(--line)" strokeWidth="2" />
+          <circle cx="0" cy="34" r="8" fill="var(--surface)" stroke="var(--muted)" strokeWidth="2.5" />
+          <text x="0" y="76" textAnchor="middle" fill="var(--ink)" fontSize="17" style={{ fontFamily: "var(--font-schibsted)" }}>
             Copias desde
           </text>
-          <text x="0" y="122" textAnchor="middle" fill="var(--brass-text)" fontSize="38" fontWeight="800" style={{ fontFamily: "var(--font-shoulders)" }}>
+          <text x="0" y="120" textAnchor="middle" fill="var(--brass-text)" fontSize="38" fontWeight="800" style={{ fontFamily: "var(--font-shoulders)" }}>
             {price}
           </text>
         </g>
