@@ -8,10 +8,54 @@ import "./globals.css";
 const display = Big_Shoulders({ variable: "--font-shoulders", subsets: ["latin"], axes: ["opsz"], adjustFontFallback: false, fallback: ["Arial Narrow", "sans-serif"] });
 const body = Schibsted_Grotesk({ variable: "--font-schibsted", subsets: ["latin"] });
 
+const seoTitle = `${site.name}: cerrajero a domicilio en ${site.city}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: `${site.name}: cerrajero a domicilio en ${site.city}`,
-  description: `Duplicado de llaves, cambio de guardas, instalación de chapas, apertura de carros y llaves para motos en ${site.city}. Atendemos 24 horas.`,
+  applicationName: site.name,
+  title: {
+    default: seoTitle,
+    template: `%s | ${site.name}`,
+  },
+  description: site.description,
+  keywords: [
+    "Cerrajería Segurox",
+    "Cerrajería Segurox Florencia",
+    "Segurox Florencia",
+    "cerrajería en Florencia Caquetá",
+    "cerrajero a domicilio Florencia",
+    "cerrajero 24 horas Florencia",
+    "duplicado de llaves Florencia",
+    "apertura de carros Florencia",
+    "llaves para motos Florencia",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "es_CO",
+    url: "/",
+    siteName: site.name,
+    title: `${site.name}: cerrajero a domicilio en ${site.city}, ${site.region}`,
+    description: site.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: seoTitle,
+    description: site.description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+    : {}),
 };
 
 export const viewport: Viewport = {

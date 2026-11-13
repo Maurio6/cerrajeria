@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getPrices } from "@/lib/db";
-import { cop, services, site, waLink } from "@/lib/site";
+import { cop, services, site, waLink, type ServiceSlug } from "@/lib/site";
 import { ContactForm, ThemeToggle } from "./ui";
 import { AddToQuote, QuoteButton, QuoteDialog } from "./cart";
 import {
@@ -29,6 +29,7 @@ const steps = [
 ];
 
 const faq = [
+  ["¿En qué zonas de Florencia atiende Cerrajería Segurox?", `En ${site.name} prestamos servicio a domicilio en toda ${site.coverage}: centro, norte, sur y barrios cercanos.`],
   ["¿Cuánto se demoran en llegar?", `Normalmente ${site.arrival} dentro de la ciudad. Te confirmamos el tiempo exacto cuando nos escribes.`],
   ["¿Atienden de noche y festivos?", "Sí. Atendemos las 24 horas, todos los días del año. En la noche puede haber un recargo y te lo decimos antes."],
   ["¿Abrir mi carro le hace daño?", "No. Usamos herramientas de apertura que no rompen vidrios ni rayan la pintura."],
@@ -39,22 +40,82 @@ const faq = [
 // URL oficial para Google: así el link con ?fbclid=... o el .vercel.app no cuentan como páginas aparte.
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
-// Datos del negocio para Google y otros buscadores (schema.org/Locksmith).
-const jsonLd = JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "Locksmith",
-  name: site.name,
-  url: site.url,
-  telephone: site.phone,
-  address: { "@type": "PostalAddress", addressLocality: site.city, addressRegion: site.region, addressCountry: "CO" },
-  areaServed: site.coverage,
-  openingHoursSpecification: {
-    "@type": "OpeningHoursSpecification",
-    dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-    opens: "00:00",
-    closes: "23:59", // así marca Google "24 horas"
-  },
-}).replace(/</g, "\\u003c");
+/** Construye los datos estructurados Schema.org (WebSite, Locksmith y FAQPage). */
+function buildJsonLd(prices: Record<ServiceSlug, number>) {
+  const businessId = `${site.url}/#business`;
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${site.url}/#website`,
+        url: site.url,
+        name: site.name,
+        alternateName: site.alternateNames,
+        inLanguage: "es-CO",
+        publisher: { "@id": businessId },
+      },
+      {
+        "@type": "Locksmith",
+        "@id": businessId,
+        name: site.name,
+        alternateName: site.alternateNames,
+        description: site.description,
+        url: site.url,
+        image: `${site.url}/opengraph-image`,
+        telephone: site.phone,
+        priceRange: "$$",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: site.city,
+          addressRegion: site.region,
+          addressCountry: site.country,
+        },
+        areaServed: {
+          "@type": "City",
+          name: site.city,
+          containedInPlace: {
+            "@type": "AdministrativeArea",
+            name: site.region,
+          },
+        },
+        openingHoursSpecification: {
+          "@type": "OpeningHoursSpecification",
+          dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+          opens: "00:00",
+          closes: "23:59", // así marca Google "24 horas"
+        },
+        hasOfferCatalog: {
+          "@type": "OfferCatalog",
+          name: `Servicios de ${site.name}`,
+          itemListElement: services.map((s) => ({
+            "@type": "Offer",
+            priceCurrency: "COP",
+            price: prices[s.slug],
+            itemOffered: {
+              "@type": "Service",
+              name: s.title,
+              description: s.desc,
+            },
+          })),
+        },
+        ...(site.sameAs.length > 0 ? { sameAs: site.sameAs } : {}),
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${site.url}/#faq`,
+        mainEntity: faq.map(([q, a]) => ({
+          "@type": "Question",
+          name: q,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: a,
+          },
+        })),
+      },
+    ],
+  }).replace(/</g, "\\u003c");
+}
 
 // La llave del hero: una cortadora recorre la hoja y talla los dientes, luego un brillo la recorre
 // y el llavero (con el precio real) se balancea. Una sola secuencia al cargar.
@@ -187,15 +248,17 @@ function HeroKey({ price }: { price: string }) {
 
 export default async function Home() {
   const prices = await cachedPrices();
+  const jsonLd = buildJsonLd(prices);
 
   return (
     <div className="pb-20 md:pb-0">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       {/* Encabezado */}
       <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
-        <nav className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
-          <a href="#" className="flex items-center gap-2.5 font-display text-2xl font-extrabold tracking-tight whitespace-nowrap">
-            <Logo className="size-8" /> {site.name}
+        <nav aria-label="Navegación principal" className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
+          {/* el nombre pasa a dos líneas solo en celulares muy angostos */}
+          <a href="#" className="flex items-center gap-2.5 font-display text-2xl leading-none font-extrabold tracking-tight">
+            <Logo className="size-8 shrink-0" /> {site.name}
           </a>
           <div className="ml-auto hidden items-center gap-6 text-sm whitespace-nowrap text-muted lg:flex">
             <a href="#servicios" className="transition hover:text-ink">Servicios y precios</a>
@@ -227,11 +290,14 @@ export default async function Home() {
               </span>
               Atendiendo ahora en {site.city}, {site.region}
             </p>
-            <h1 className="mt-5 font-display text-[3.6rem] leading-[0.92] font-extrabold tracking-tight text-balance sm:text-7xl lg:text-[6.2rem]">
+            <h1 className="mt-5 font-display text-[3.4rem] leading-[0.94] font-extrabold tracking-tight text-balance sm:text-7xl lg:text-[5.8rem]">
+              <span className="mb-2 block text-[0.42em] tracking-normal text-brass-text uppercase">
+                {site.name}
+              </span>
               Cerrajero a domicilio en {site.city}
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted">
-              Duplicamos llaves, cambiamos guardas, instalamos chapas y abrimos carros y motos. Llegamos en {site.arrival}, de día o de noche.
+              En <strong className="font-semibold text-ink">{site.name}</strong> duplicamos llaves, cambiamos guardas, instalamos chapas y abrimos carros y motos en {site.coverage}. Llegamos en {site.arrival}, de día o de noche.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a href={`tel:${site.phone}`} className="flex items-center justify-center gap-2 rounded-lg bg-brass px-6 py-3.5 font-semibold text-on-brass transition hover:bg-brass-dark hover:text-white">
@@ -360,7 +426,7 @@ export default async function Home() {
             <div>
               <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Escríbenos</h2>
               <p className="mt-3 max-w-md text-muted">
-                Para pedir un servicio, dejar una queja o cualquier otra cosa. Leemos todos los mensajes.
+                Contacta directamente a {site.name} en {site.coverage} para pedir un servicio, cotizar o dejar una queja. Leemos todos los mensajes.
               </p>
               <dl className="mt-10 grid gap-6">
                 <div>
@@ -386,7 +452,7 @@ export default async function Home() {
 
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p className="flex items-center gap-2"><Logo className="size-6" /> {site.name}, cerrajería en {site.city}</p>
+          <p className="flex items-center gap-2"><Logo className="size-6" /> {site.name} · {site.coverage}</p>
           <p>{site.hours}</p>
         </div>
       </footer>
