@@ -7,8 +7,10 @@ export const site = {
   whatsapp: "573232483692", // con indicativo, sin + ni espacios
   phone: "+573232483692",
   phoneDisplay: "323 248 3692",
-  hours: "Todos los días, 24 horas",
+  hours: "Todos los días, 24 horas", // si lo cambias, cambia también el horario del jsonLd en app/page.tsx
   arrival: "unos 30 minutos",
+  // Dominio público: lo pone Vercel (tu dominio propio si lo agregas, si no el .vercel.app). Solo sirve en el servidor.
+  url: process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000",
 };
 
 export const services = [

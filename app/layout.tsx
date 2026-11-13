@@ -9,6 +9,7 @@ const display = Big_Shoulders({ variable: "--font-shoulders", subsets: ["latin"]
 const body = Schibsted_Grotesk({ variable: "--font-schibsted", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(site.url),
   title: `${site.name}: cerrajero a domicilio en ${site.city}`,
   description: `Duplicado de llaves, cambio de guardas, instalación de chapas, apertura de carros y llaves para motos en ${site.city}. Atendemos 24 horas.`,
 };

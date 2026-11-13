@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getPrices } from "@/lib/db";
 import { cop, services, site, waLink } from "@/lib/site";
@@ -34,6 +35,26 @@ const faq = [
   ["¿Pueden hacer la llave de mi moto si no tengo ninguna copia?", "Sí. Hacemos la llave a partir del suiche de la moto. Ten a mano la tarjeta de propiedad."],
   ["¿Cómo puedo pagar?", "En efectivo, Nequi, Daviplata o transferencia, cuando termine el trabajo."],
 ];
+
+// URL oficial para Google: así el link con ?fbclid=... o el .vercel.app no cuentan como páginas aparte.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
+
+// Datos del negocio para Google y otros buscadores (schema.org/Locksmith).
+const jsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Locksmith",
+  name: site.name,
+  url: site.url,
+  telephone: site.phone,
+  address: { "@type": "PostalAddress", addressLocality: site.city, addressRegion: site.region, addressCountry: "CO" },
+  areaServed: site.coverage,
+  openingHoursSpecification: {
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    opens: "00:00",
+    closes: "23:59", // así marca Google "24 horas"
+  },
+}).replace(/</g, "\\u003c");
 
 // La llave del hero: una cortadora recorre la hoja y talla los dientes, luego un brillo la recorre
 // y el llavero (con el precio real) se balancea. Una sola secuencia al cargar.
@@ -169,6 +190,7 @@ export default async function Home() {
 
   return (
     <div className="pb-20 md:pb-0">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       {/* Encabezado */}
       <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
         <nav className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
