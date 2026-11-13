@@ -17,14 +17,14 @@ export const services = [
     title: "Duplicado y elaboración de llaves",
     desc: "Copias exactas en el momento, o una llave nueva aunque no tengas la original.",
     details: ["Llaves de casa y oficina", "Llaves de seguridad y multipunto", "Candados y archivadores"],
-    defaultPrice: 8000,
+    defaultPrice: 3000,
   },
   {
     slug: "guardas",
     title: "Cambio de guardas",
     desc: "Si perdiste las llaves o te mudaste, cambiamos la guarda de cualquier chapa.",
     details: [],
-    defaultPrice: 35000,
+    defaultPrice: 30000,
   },
   {
     slug: "instalacion",
@@ -38,7 +38,7 @@ export const services = [
     title: "Apertura de carros",
     desc: "Abrimos tu carro sin romper vidrios ni dañar la puerta.",
     details: [],
-    defaultPrice: 60000,
+    defaultPrice: 30000,
   },
   {
     slug: "motos",
