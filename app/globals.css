@@ -87,23 +87,6 @@ body {
   border-radius: 6px;
 }
 
-/* La llave del hero: entra, la cortadora talla los dientes (SVG) y el llavero se balancea. */
-@keyframes key-in {
-  from { opacity: 0; transform: translateY(14px); }
-}
-.hero-key-body { animation: key-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-@keyframes swing {
-  0% { rotate: 0deg; }
-  20% { rotate: 14deg; }
-  50% { rotate: -7deg; }
-  78% { rotate: 3deg; }
-  100% { rotate: 0deg; }
-}
-.key-tag {
-  transform-box: fill-box;
-  transform-origin: 50% 0;
-  animation: swing 1.5s cubic-bezier(0.3, 0.7, 0.4, 1) 2.3s both;
-}
 @keyframes pop {
   from { opacity: 0; transform: scale(0.96); }
 }
@@ -119,7 +102,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .hero-key-body, .key-tag, .pop, .quote-dialog[open] { animation: none; }
+  .pop, .quote-dialog[open] { animation: none; }
+  /* llave quieta y ya cortada (las animaciones SVG no respetan esta preferencia por sí solas) */
+  .key-loop { opacity: 1 !important; transform: none !important; }
+  .key-tag { transform: none !important; }
   .key-stock, .key-cutter, .key-glint { display: none; }
 }
 
@@ -138,3 +124,38 @@ body {
 
 details summary::-webkit-details-marker { display: none; }
 
+
+/* Entrada de secciones: título que sube tras una línea, tarjetas escalonadas y la línea del proceso
+   que se dibuja paso a paso. Solo se activa cuando reveal.tsx añade .reveal-on (hay JS y movimiento);
+   data-shown lo pone/quita el observador al entrar/salir de pantalla. --i escalona el retraso. */
+.reveal-on .rv:not([data-shown]) {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.reveal-on .rv-title {
+  clip-path: inset(0 0 -0.15em 0);
+}
+.reveal-on .rv-title > span {
+  display: block;
+}
+.reveal-on .rv-title:not([data-shown]) > span {
+  transform: translateY(105%);
+}
+.reveal-on .rv-bar:not([data-shown]) {
+  transform: scaleY(0);
+}
+@media (min-width: 768px) {
+  .reveal-on .rv-bar:not([data-shown]) { transform: scaleX(0); }
+}
+.reveal-on .rv[data-shown],
+.reveal-on .rv-title[data-shown] > span {
+  transition:
+    opacity 0.6s ease-out,
+    transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 90ms + 120ms);
+}
+.reveal-on .rv-title[data-shown] > span { transition-delay: 0ms; }
+.reveal-on .rv-bar[data-shown] {
+  transition: transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+  transition-delay: calc(var(--i, 0) * 270ms + 150ms);
+}

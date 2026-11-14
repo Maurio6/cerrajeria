@@ -4,6 +4,7 @@ import { getPrices } from "@/lib/db";
 import { cop, services, site, waLink, type ServiceSlug } from "@/lib/site";
 import { ContactForm, ThemeToggle } from "./ui";
 import { AddToQuote, QuoteButton, QuoteDialog } from "./cart";
+import { Reveal } from "./reveal";
 import {
   CarIcon, DoorIcon, Logo, PhoneIcon, PlusIcon, SearchKeyIcon, ShieldIcon, WhatsAppIcon, serviceIcons,
 } from "./icons";
@@ -117,14 +118,13 @@ function buildJsonLd(prices: Record<ServiceSlug, number>) {
   }).replace(/</g, "\\u003c");
 }
 
-// La llave del hero: una cortadora recorre la hoja y talla los dientes, luego un brillo la recorre
-// y el llavero (con el precio real) se balancea. Una sola secuencia al cargar.
+// La llave del hero, en bucle: entra una llave en blanco, la cortadora talla los dientes, un brillo
+// la recorre, el llavero (con el precio real) se balancea, y sale para dar paso a la siguiente.
+// Todo va en un mismo reloj de T segundos dentro del SVG, así nada se desfasa.
 const PROFILE = "M290 110 L311 124 L332 110 L353 140 L374 110 L395 130 L416 110 L437 146 L458 110 L479 122 L500 110 L521 136 L542 110 L563 132 L584 110";
 const BOW =
   "M110 60 H160 A70 70 0 0 1 230 130 V170 A70 70 0 0 1 160 240 H110 A70 70 0 0 1 40 170 V130 A70 70 0 0 1 110 60 Z M117 150 A22 22 0 1 0 73 150 A22 22 0 1 0 117 150 Z";
 const BLADE = `M226 120 H262 V108 H276 V110 H290 ${PROFILE.slice(9)} H592 L622 140 V168 L604 180 H276 V192 H262 V180 H226 Z`;
-const CUT_BEGIN = "0.5s";
-const CUT_DUR = "1.8s";
 const TEETH = Array.from({ length: 20 }, (_, i) => {
   const p = (deg: number, r: number) => {
     const a = (deg * Math.PI) / 180;
@@ -133,6 +133,22 @@ const TEETH = Array.from({ length: 20 }, (_, i) => {
   const a = i * 18;
   return `M${p(a - 6, 33)} L${p(a, 40)} L${p(a + 6, 33)} Z`;
 }).join(" ");
+
+const T = 7; // segundos por ciclo
+const CUT = [0.5, 2.3] as const; // la cortadora entra y sale
+const loop = { dur: `${T}s`, repeatCount: "indefinite" } as const;
+const kt = (...s: number[]) => s.map((x) => (x / T).toFixed(4)).join(";");
+
+// La cortadora sigue el perfil por distancia recorrida, pero el corte avanza parejo en x.
+// Para que coincidan, a cada vértice le damos el instante que le toca según su x.
+const PTS = PROFILE.slice(1).split(" L").map((p) => p.split(" ").map(Number));
+const LEN = PTS.map((_, i) => PTS.slice(1, i + 1).reduce((d, [x, y], j) => d + Math.hypot(x - PTS[j][0], y - PTS[j][1]), 0));
+const [X0, X1] = [PTS[0][0], PTS.at(-1)![0]];
+const MOTION = {
+  keyPoints: ["0", ...LEN.map((l) => (l / LEN.at(-1)!).toFixed(4)), "1"].join(";"),
+  keyTimes: kt(0, ...PTS.map(([x]) => CUT[0] + ((x - X0) / (X1 - X0)) * (CUT[1] - CUT[0])), T),
+};
+const CUT_TIMES = kt(0, CUT[0], CUT[1], T);
 
 function HeroKey({ price }: { price: string }) {
   return (
@@ -162,8 +178,8 @@ function HeroKey({ price }: { price: string }) {
         </clipPath>
         {/* lo que falta por cortar: todo lo que está a la derecha de la cortadora */}
         <clipPath id="k-stock-clip">
-          <rect x="290" y="0" width="400" height="300">
-            <animate attributeName="x" from="290" to="584" begin={CUT_BEGIN} dur={CUT_DUR} fill="freeze" />
+          <rect x={X0} y="0" width="400" height="300">
+            <animate attributeName="x" values={`${X0};${X0};${X1};${X1}`} keyTimes={CUT_TIMES} {...loop} />
           </rect>
         </clipPath>
         <filter id="k-shadow" x="-10%" y="-20%" width="120%" height="160%">
@@ -171,75 +187,97 @@ function HeroKey({ price }: { price: string }) {
         </filter>
       </defs>
 
-      {/* argolla: pasa por detrás de la cabeza y se ve por el hueco */}
-      <circle cx="70" cy="200" r="56" fill="none" stroke="var(--muted)" strokeWidth="6" />
-      <circle cx="70" cy="200" r="56" fill="none" stroke="#fff" strokeOpacity=".25" strokeWidth="1.5" />
+      {/* cada ciclo: entra subiendo, se queda, y sale hacia arriba */}
+      <g className="key-loop">
+        <animate attributeName="opacity" values="0;1;1;0" keyTimes={kt(0, 0.5, T - 0.5, T)} {...loop} />
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          values="0 16;0 0;0 0;0 -12"
+          keyTimes={kt(0, 0.5, T - 0.5, T)}
+          calcMode="spline"
+          keySplines=".2 .8 .2 1;0 0 1 1;.5 0 .9 .5"
+          {...loop}
+        />
 
-      <g className="hero-key-body" filter="url(#k-shadow)">
-        <use href="#k-bow" fill="var(--brass)" stroke="var(--brass-dark)" strokeWidth="1.5" />
-        <use href="#k-blade" fill="var(--brass)" stroke="var(--brass-dark)" strokeWidth="1.5" />
-        <use href="#k-bow" fill="url(#k-sheen)" />
-        <use href="#k-blade" fill="url(#k-sheen-blade)" />
-        {/* relieve en la cabeza: marco y la marca del negocio */}
-        <rect x="56" y="76" width="158" height="148" rx="56" fill="none" stroke="#fff" strokeOpacity=".28" strokeWidth="2" />
-        <g fill="var(--brass-dark)" opacity=".55">
-          <circle cx="172" cy="143" r="11" />
-          <path d="M166 150 L162 172 H182 L178 150 Z" />
+        {/* argolla: pasa por detrás de la cabeza y se ve por el hueco */}
+        <circle cx="70" cy="200" r="56" fill="none" stroke="var(--muted)" strokeWidth="6" />
+        <circle cx="70" cy="200" r="56" fill="none" stroke="#fff" strokeOpacity=".25" strokeWidth="1.5" />
+
+        <g filter="url(#k-shadow)">
+          <use href="#k-bow" fill="var(--brass)" stroke="var(--brass-dark)" strokeWidth="1.5" />
+          <use href="#k-blade" fill="var(--brass)" stroke="var(--brass-dark)" strokeWidth="1.5" />
+          <use href="#k-bow" fill="url(#k-sheen)" />
+          <use href="#k-blade" fill="url(#k-sheen-blade)" />
+          {/* relieve en la cabeza: marco y la marca del negocio */}
+          <rect x="56" y="76" width="158" height="148" rx="56" fill="none" stroke="#fff" strokeOpacity=".28" strokeWidth="2" />
+          <g fill="var(--brass-dark)" opacity=".55">
+            <circle cx="172" cy="143" r="11" />
+            <path d="M166 150 L162 172 H182 L178 150 Z" />
+          </g>
+          {/* canal fresado de la hoja */}
+          <path d="M300 154 H594 V161 H300 Z" fill="#000" opacity=".16" />
+          <path d="M300 165 H590" stroke="#fff" strokeOpacity=".3" strokeWidth="1.5" />
+          {/* material sin cortar: desaparece detrás de la cortadora */}
+          <g className="key-stock" clipPath="url(#k-stock-clip)">
+            <path d={`${PROFILE} Z`} fill="var(--brass)" />
+            <path d={`${PROFILE} Z`} fill="url(#k-sheen-blade)" />
+            <path d={`M${X0} 110 H${X1}`} stroke="var(--brass-dark)" strokeWidth="1.5" />
+          </g>
         </g>
-        {/* canal fresado de la hoja */}
-        <path d="M300 154 H594 V161 H300 Z" fill="#000" opacity=".16" />
-        <path d="M300 165 H590" stroke="#fff" strokeOpacity=".3" strokeWidth="1.5" />
-        {/* material sin cortar: desaparece detrás de la cortadora */}
-        <g className="key-stock" clipPath="url(#k-stock-clip)">
-          <path d={`${PROFILE} Z`} fill="var(--brass)" />
-          <path d={`${PROFILE} Z`} fill="url(#k-sheen-blade)" />
-          <path d="M290 110 H584" stroke="var(--brass-dark)" strokeWidth="1.5" />
+
+        {/* cortadora */}
+        <g className="key-cutter" opacity="0">
+          <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes={kt(0, CUT[0], CUT[0] + 0.15, CUT[1], CUT[1] + 0.4, T)} {...loop} />
+          <animateMotion path={PROFILE} keyPoints={MOTION.keyPoints} keyTimes={MOTION.keyTimes} calcMode="linear" {...loop} />
+          <rect x="-5" y="-130" width="10" height="96" rx="3" fill="var(--muted)" opacity=".45" />
+          <g>
+            <animateTransform attributeName="transform" type="rotate" values="0 0 -34;0 0 -34;-1440 0 -34;-1440 0 -34" keyTimes={CUT_TIMES} {...loop} />
+            <circle cx="0" cy="-34" r="34" fill="var(--muted)" />
+            <path d={TEETH} fill="var(--muted)" />
+            <circle cx="0" cy="-34" r="22" fill="none" stroke="#fff" strokeOpacity=".25" strokeWidth="1.5" />
+            <path d="M0 -56 V-12 M-22 -34 H22" stroke="#fff" strokeOpacity=".2" strokeWidth="2" />
+            <circle cx="0" cy="-34" r="7" fill="var(--surface)" />
+          </g>
+          {/* virutas (solo se ven mientras la cortadora está visible) */}
+          {[0, 0.17, 0.33].map((d, i) => (
+            <circle key={d} cx={i * 4 - 4} cy="2" r="2.2" fill="var(--brass)">
+              <animate attributeName="cy" values="2;30" dur="0.5s" begin={`${d}s`} repeatCount="indefinite" />
+              <animate attributeName="cx" values={`${i * 4 - 4};${i * 9 - 9}`} dur="0.5s" begin={`${d}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1;0" dur="0.5s" begin={`${d}s`} repeatCount="indefinite" />
+            </circle>
+          ))}
         </g>
-      </g>
 
-
-      {/* cortadora */}
-      <g className="key-cutter" opacity="0">
-        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.85;1" begin={CUT_BEGIN} dur="2.2s" fill="freeze" />
-        <animateMotion path={PROFILE} begin={CUT_BEGIN} dur={CUT_DUR} calcMode="linear" fill="freeze" />
-        <rect x="-5" y="-130" width="10" height="96" rx="3" fill="var(--muted)" opacity=".45" />
-        <g>
-          <animateTransform attributeName="transform" type="rotate" from="0 0 -34" to="-1440 0 -34" begin={CUT_BEGIN} dur={CUT_DUR} fill="freeze" />
-          <circle cx="0" cy="-34" r="34" fill="var(--muted)" />
-          <path d={TEETH} fill="var(--muted)" />
-          <circle cx="0" cy="-34" r="22" fill="none" stroke="#fff" strokeOpacity=".25" strokeWidth="1.5" />
-          <path d="M0 -56 V-12 M-22 -34 H22" stroke="#fff" strokeOpacity=".2" strokeWidth="2" />
-          <circle cx="0" cy="-34" r="7" fill="var(--surface)" />
+        {/* brillo que recorre la llave terminada */}
+        <g clipPath="url(#k-shape)" className="key-glint">
+          <rect x="-160" y="20" width="120" height="280" fill="url(#k-glint)" transform="skewX(-20)">
+            <animate attributeName="x" values="-160;-160;760;760" keyTimes={kt(0, 2.4, 3.3, T)} {...loop} />
+          </rect>
         </g>
-        {/* virutas */}
-        {[0, 0.17, 0.33].map((d, i) => (
-          <circle key={d} cx={i * 4 - 4} cy="2" r="2.2" fill="var(--brass)">
-            <animate attributeName="cy" values="2;30" dur="0.5s" begin={`${0.5 + d}s`} repeatCount="4" />
-            <animate attributeName="cx" values={`${i * 4 - 4};${i * 9 - 9}`} dur="0.5s" begin={`${0.5 + d}s`} repeatCount="4" />
-            <animate attributeName="opacity" values="1;0" dur="0.5s" begin={`${0.5 + d}s`} repeatCount="4" fill="freeze" />
-          </circle>
-        ))}
-      </g>
 
-      {/* brillo que recorre la llave terminada */}
-      <g clipPath="url(#k-shape)" className="key-glint">
-        <rect x="-160" y="20" width="120" height="280" fill="url(#k-glint)" transform="skewX(-20)">
-          <animate attributeName="x" from="-160" to="760" begin="2.4s" dur="0.9s" fill="freeze" />
-        </rect>
-      </g>
-
-      {/* llavero con el precio */}
-      <g transform="translate(70 256)">
-        <g className="key-tag">
-          <path d="M0 0 V14" stroke="var(--muted)" strokeWidth="3" />
-          <rect x="-78" y="14" width="156" height="132" rx="14" fill="var(--sunk)" stroke="var(--line)" strokeWidth="2" />
-          <circle cx="0" cy="34" r="8" fill="var(--surface)" stroke="var(--muted)" strokeWidth="2.5" />
-          <text x="0" y="76" textAnchor="middle" fill="var(--ink)" fontSize="17" style={{ fontFamily: "var(--font-schibsted)" }}>
-            Copias desde
-          </text>
-          <text x="0" y="120" textAnchor="middle" fill="var(--brass-text)" fontSize="38" fontWeight="800" style={{ fontFamily: "var(--font-shoulders)" }}>
-            {price}
-          </text>
+        {/* llavero con el precio: se balancea cuando la cortadora suelta la llave */}
+        <g transform="translate(70 256)">
+          <g className="key-tag">
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              values="0;0;14;-7;3;0;0"
+              keyTimes={kt(0, CUT[1], 2.65, 3.05, 3.45, 3.85, T)}
+              calcMode="spline"
+              keySplines=".4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1;0 0 1 1"
+              {...loop}
+            />
+            <path d="M0 0 V14" stroke="var(--muted)" strokeWidth="3" />
+            <rect x="-78" y="14" width="156" height="132" rx="14" fill="var(--sunk)" stroke="var(--line)" strokeWidth="2" />
+            <circle cx="0" cy="34" r="8" fill="var(--surface)" stroke="var(--muted)" strokeWidth="2.5" />
+            <text x="0" y="76" textAnchor="middle" fill="var(--ink)" fontSize="17" style={{ fontFamily: "var(--font-schibsted)" }}>
+              Copias desde
+            </text>
+            <text x="0" y="120" textAnchor="middle" fill="var(--brass-text)" fontSize="38" fontWeight="800" style={{ fontFamily: "var(--font-shoulders)" }}>
+              {price}
+            </text>
+          </g>
         </g>
       </g>
     </svg>
@@ -317,23 +355,24 @@ export default async function Home() {
         <section className="border-y border-line bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 md:py-20">
             <div className="max-w-xl">
-              <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">¿Qué te pasó?</h2>
-              <p className="mt-3 text-muted">Elige tu caso y se abre WhatsApp con el mensaje ya escrito.</p>
+              <h2 className="rv-title font-display text-4xl font-extrabold tracking-tight sm:text-5xl"><span>¿Qué te pasó?</span></h2>
+              <p className="rv mt-3 text-muted" style={{ "--i": 1 } as React.CSSProperties}>Elige tu caso y se abre WhatsApp con el mensaje ya escrito.</p>
             </div>
             <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {cases.map(({ icon: Icon, text, msg }) => (
+              {cases.map(({ icon: Icon, text, msg }, i) => (
+                <div key={text} className="rv" style={{ "--i": (i % 4) + 1 } as React.CSSProperties}>
                 <a
-                  key={text}
                   href={waLink(msg)}
                   target="_blank"
                   rel="noopener"
-                  className="group flex items-center gap-4 rounded-xl border border-line bg-bg p-4 transition hover:border-brass sm:flex-col sm:items-start sm:p-5"
+                  className="group flex h-full items-center gap-4 rounded-xl border border-line bg-bg p-4 transition hover:border-brass sm:flex-col sm:items-start sm:p-5"
                 >
                   <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-surface text-brass-text ring-1 ring-line transition group-hover:bg-brass group-hover:text-on-brass group-hover:ring-brass">
                     <Icon />
                   </span>
                   <span className="font-medium leading-snug">{text}</span>
                 </a>
+                </div>
               ))}
             </div>
           </div>
@@ -342,8 +381,8 @@ export default async function Home() {
         {/* Servicios */}
         <section id="servicios" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
           <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
-            <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Servicios y precios</h2>
-            <p className="max-w-sm text-sm text-muted md:text-right">
+            <h2 className="rv-title font-display text-4xl font-extrabold tracking-tight sm:text-5xl"><span>Servicios y precios</span></h2>
+            <p className="rv max-w-sm text-sm text-muted md:text-right" style={{ "--i": 1 } as React.CSSProperties}>
               Agrega lo que necesites y envíanos la cotización por WhatsApp. Son precios de referencia: el valor final te lo confirmamos antes de empezar.
             </p>
           </div>
@@ -355,7 +394,8 @@ export default async function Home() {
               return (
                 <article
                   key={s.slug}
-                  className={`flex flex-col rounded-2xl border border-line bg-surface p-6 ${featured ? "md:col-span-2 lg:col-span-1 lg:row-span-2 lg:p-8" : ""}`}
+                  style={{ "--i": (i % 3) + 1 } as React.CSSProperties}
+                  className={`rv flex flex-col rounded-2xl border border-line bg-surface p-6 ${featured ? "md:col-span-2 lg:col-span-1 lg:row-span-2 lg:p-8" : ""}`}
                 >
                   <Icon className={featured ? "size-10 text-brass-text" : "size-7 text-brass-text"} />
                   <h3 className={`mt-5 font-display font-bold tracking-tight ${featured ? "text-4xl leading-none" : "text-2xl"}`}>{s.title}</h3>
@@ -386,13 +426,14 @@ export default async function Home() {
         {/* Cómo trabajamos */}
         <section id="como" className="bg-[#15202b] text-[#e8ecf0] dark:bg-sunk">
           <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
-            <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Cómo trabajamos</h2>
+            <h2 className="rv-title font-display text-4xl font-extrabold tracking-tight sm:text-5xl"><span>Cómo trabajamos</span></h2>
             <ol className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
               {steps.map(([t, d], i) => (
-                <li key={t} className="relative border-l-2 border-brass pl-6 md:border-t-2 md:border-l-0 md:pt-6 md:pl-0">
-                  <span className="font-display text-6xl leading-none font-extrabold text-brass">{i + 1}</span>
-                  <h3 className="mt-3 text-xl font-semibold">{t}</h3>
-                  <p className="mt-2 max-w-xs opacity-75">{d}</p>
+                <li key={t} className="relative pl-6 md:pt-6 md:pl-0">
+                  <span aria-hidden className="rv-bar absolute top-0 left-0 h-full w-0.5 origin-top bg-brass md:h-0.5 md:w-full md:origin-left" style={{ "--i": i } as React.CSSProperties} />
+                  <span className="rv block font-display text-6xl leading-none font-extrabold text-brass" style={{ "--i": i * 3 } as React.CSSProperties}>{i + 1}</span>
+                  <h3 className="rv mt-3 text-xl font-semibold" style={{ "--i": i * 3 + 1 } as React.CSSProperties}>{t}</h3>
+                  <p className="rv mt-2 max-w-xs opacity-75" style={{ "--i": i * 3 + 2 } as React.CSSProperties}>{d}</p>
                 </li>
               ))}
             </ol>
@@ -402,14 +443,14 @@ export default async function Home() {
         {/* Preguntas */}
         <section id="preguntas" className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
           <div>
-            <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Preguntas frecuentes</h2>
-            <p className="mt-3 text-muted">
+            <h2 className="rv-title font-display text-4xl font-extrabold tracking-tight sm:text-5xl"><span>Preguntas frecuentes</span></h2>
+            <p className="rv mt-3 text-muted" style={{ "--i": 1 } as React.CSSProperties}>
               ¿Tienes otra duda? <a href={waLink()} target="_blank" rel="noopener" className="font-semibold text-brass-text underline underline-offset-4">Pregúntanos por WhatsApp</a>.
             </p>
           </div>
           <div className="divide-y divide-line border-y border-line">
-            {faq.map(([q, a]) => (
-              <details key={q} className="group">
+            {faq.map(([q, a], i) => (
+              <details key={q} className="rv group" style={{ "--i": i + 1 } as React.CSSProperties}>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-lg font-medium">
                   {q}
                   <PlusIcon className="size-5 shrink-0 text-muted transition-transform duration-300 group-open:rotate-45" />
@@ -424,11 +465,11 @@ export default async function Home() {
         <section id="contacto" className="border-t border-line bg-sunk/60">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
             <div>
-              <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Escríbenos</h2>
-              <p className="mt-3 max-w-md text-muted">
+              <h2 className="rv-title font-display text-4xl font-extrabold tracking-tight sm:text-5xl"><span>Escríbenos</span></h2>
+              <p className="rv mt-3 max-w-md text-muted" style={{ "--i": 1 } as React.CSSProperties}>
                 Contacta directamente a {site.name} en {site.coverage} para pedir un servicio, cotizar o dejar una queja. Leemos todos los mensajes.
               </p>
-              <dl className="mt-10 grid gap-6">
+              <dl className="rv mt-10 grid gap-6" style={{ "--i": 2 } as React.CSSProperties}>
                 <div>
                   <dt className="text-sm text-muted">Teléfono y WhatsApp</dt>
                   <dd className="mt-1">
@@ -445,7 +486,9 @@ export default async function Home() {
                 </div>
               </dl>
             </div>
-            <ContactForm />
+            <div className="rv" style={{ "--i": 1 } as React.CSSProperties}>
+              <ContactForm />
+            </div>
           </div>
         </section>
       </main>
@@ -458,6 +501,7 @@ export default async function Home() {
       </footer>
 
       <QuoteDialog prices={prices} />
+      <Reveal />
 
       {/* Barra de acción en celular */}
       <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2 border-t border-line bg-bg/95 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md md:hidden">
