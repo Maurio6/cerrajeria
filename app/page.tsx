@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getPrices } from "@/lib/db";
-import { cop, services, site, waLink, type ServiceSlug } from "@/lib/site";
+import { cop, maps, services, site, waLink, type ServiceSlug } from "@/lib/site";
 import { ContactForm, ThemeToggle } from "./ui";
 import { AddToQuote, QuoteButton, QuoteDialog } from "./cart";
 import { Reveal } from "./reveal";
 import {
-  CarIcon, DoorIcon, Logo, PhoneIcon, PlusIcon, SearchKeyIcon, ShieldIcon, WhatsAppIcon, serviceIcons,
+  CarIcon, DoorIcon, Logo, PhoneIcon, PinIcon, PlusIcon, SearchKeyIcon, ShieldIcon, WhatsAppIcon, serviceIcons,
 } from "./icons";
 
 async function cachedPrices() {
@@ -68,10 +68,17 @@ function buildJsonLd(prices: Record<ServiceSlug, number>) {
         priceRange: "$$",
         address: {
           "@type": "PostalAddress",
+          streetAddress: `${site.street}, ${site.neighborhood}`,
           addressLocality: site.city,
           addressRegion: site.region,
           addressCountry: site.country,
         },
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: site.geo.lat,
+          longitude: site.geo.lng,
+        },
+        hasMap: maps.view,
         areaServed: {
           "@type": "City",
           name: site.city,
@@ -458,6 +465,46 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* Ubicación del local */}
+        <section id="ubicacion" className="border-t border-line">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1fr_1.4fr] lg:items-center lg:gap-16">
+            <div>
+              <h2 className="rv-title font-display text-4xl font-extrabold tracking-tight sm:text-5xl"><span>Visítanos en el Centro</span></h2>
+              <p className="rv mt-3 max-w-md text-muted" style={{ "--i": 1 } as React.CSSProperties}>
+                Trae tus llaves y te sacamos la copia al momento, o pasa a ver y cotizar chapas y guardas.
+              </p>
+              <address className="rv mt-8 flex items-start gap-3 not-italic" style={{ "--i": 2 } as React.CSSProperties}>
+                <PinIcon className="mt-1 size-7 shrink-0 text-brass-text" />
+                <span>
+                  <span className="block font-display text-4xl leading-none font-bold tracking-tight">{site.street}</span>
+                  <span className="mt-1.5 block text-muted">{site.neighborhood}, {site.coverage}</span>
+                </span>
+              </address>
+              <p className="rv mt-8 text-sm font-medium" style={{ "--i": 3 } as React.CSSProperties}>Cómo llegar con:</p>
+              <div className="rv mt-3 grid grid-cols-3 gap-2 sm:max-w-md" style={{ "--i": 4 } as React.CSSProperties}>
+                <a href={maps.google} target="_blank" rel="noopener" className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-sm font-semibold whitespace-nowrap transition bg-brass text-on-brass hover:bg-brass-dark hover:text-white">
+                  Google Maps
+                </a>
+                <a href={maps.waze} target="_blank" rel="noopener" className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-sm font-semibold whitespace-nowrap transition border border-ink/80 hover:bg-ink hover:text-bg">
+                  Waze
+                </a>
+                <a href={maps.apple} target="_blank" rel="noopener" className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-sm font-semibold whitespace-nowrap transition border border-ink/80 hover:bg-ink hover:text-bg">
+                  Apple Maps
+                </a>
+              </div>
+            </div>
+            <div className="rv overflow-hidden rounded-2xl border border-line bg-sunk" style={{ "--i": 2 } as React.CSSProperties}>
+              <iframe
+                src={maps.embed}
+                title={`Mapa con la ubicación de ${site.name}: ${site.street}, ${site.neighborhood}`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="block aspect-[4/3] w-full sm:aspect-[16/10]"
+              />
+            </div>
+          </div>
+        </section>
+
         {/* Contacto */}
         <section id="contacto" className="border-t border-line bg-sunk/60">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
@@ -476,6 +523,12 @@ export default async function Home() {
                 <div>
                   <dt className="text-sm text-muted">Horario</dt>
                   <dd className="mt-1 text-lg">{site.hours}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">Local</dt>
+                  <dd className="mt-1 text-lg">
+                    <a href="#ubicacion" className="underline-offset-4 hover:text-brass-text hover:underline">{site.street}, {site.neighborhood}</a>
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm text-muted">Dónde atendemos</dt>

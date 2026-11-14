@@ -40,7 +40,10 @@ export const ShieldIcon = ({ className }: P) => (
 export const PhoneIcon = ({ className }: P) => (
   <svg {...base(className)}><path d="M5 3.5h3l1.5 4-2 1.3a11 11 0 0 0 5.7 5.7l1.3-2 4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 5.7a2 2 0 0 1 2-2.2Z" /></svg>
 );
-export const SunIcon = ({ className }: P) => (
+export const PinIcon = ({ className }: P) => (
+  <svg {...base(className)}><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" /><circle cx="12" cy="10" r="2.3" /></svg>
+);
+export const SunIcon =({ className }: P) => (
   <svg {...base(className)}><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></svg>
 );
 export const MoonIcon = ({ className }: P) => (

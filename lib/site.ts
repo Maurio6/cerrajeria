@@ -23,6 +23,11 @@ export const site = {
   phoneDisplay: "323 248 3692",
   hours: "Todos los días, 24 horas", // si lo cambias, cambia también el horario del jsonLd en app/page.tsx
   arrival: "unos 30 minutos",
+  // Local físico (si cambia, cambia también la ficha de Google Business para que coincidan).
+  street: "Cra. 10 #15-77",
+  neighborhood: "Barrio Centro",
+  // Pin exacto del local, tomado del enlace de Google Maps del negocio.
+  geo: { lat: 1.61649, lng: -75.612238 },
   description:
     "Cerrajería Segurox en Florencia, Caquetá. Cerrajero a domicilio 24 horas: copias de llaves, cambio de guardas, chapas, apertura de carros y llaves de motos.",
   // Dominio público: prioridad a env explícito, luego Vercel, luego dominio de producción.
@@ -72,6 +77,16 @@ export type ServiceSlug = (typeof services)[number]["slug"];
 
 export const waLink = (text = "Hola, necesito un cerrajero") =>
   `https://wa.me/${site.whatsapp}?text=${encodeURIComponent(text)}`;
+
+// Cómo llegar al local: cada enlace abre la app correspondiente en el celular (o la web en computador).
+const { lat, lng } = site.geo;
+export const maps = {
+  google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+  waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+  apple: `https://maps.apple.com/?daddr=${lat},${lng}&q=${encodeURIComponent(site.name)}`,
+  embed: `https://www.google.com/maps?q=${lat},${lng}&z=17&output=embed`,
+  view: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+};
 
 export const cop = (n: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
