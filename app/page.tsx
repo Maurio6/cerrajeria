@@ -329,9 +329,6 @@ export default async function Home() {
               Atendiendo ahora en {site.city}, {site.region}
             </p>
             <h1 className="mt-5 font-display text-[3.4rem] leading-[0.94] font-extrabold tracking-tight text-balance sm:text-7xl lg:text-[5.8rem]">
-              <span className="mb-2 block text-[0.42em] tracking-normal text-brass-text uppercase">
-                {site.name}
-              </span>
               Cerrajero a domicilio en {site.city}
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted">
